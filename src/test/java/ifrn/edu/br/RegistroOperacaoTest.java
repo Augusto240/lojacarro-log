@@ -14,22 +14,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RegistroOperacaoTest {
 
+    private static final String CRIADO = """
+            {"operacao":"CARRO_CRIADO","dataHora":"2026-10-27T14:05:30","usuarioId":2,"usuarioNome":"Maria Oliveira",
+             "carroId":1,"marca":"Toyota","modelo":"Corolla","ano":2024,"requestId":"web-abc123"}
+            """;
+
     @TempDir
     Path pasta;
 
     @Test
-    void mensagemDaLojaCarroViraUmaLinhaLegivel() {
+    void jsonDaLojaCarroViraUmaLinhaLegivel() {
         RegistroOperacao registro = new RegistroOperacao(pasta.resolve("operacoes.log"));
 
-        String linha = registro.montarLinha(
-                "CARRO_CRIADO;2026-10-27T14:05:30;Maria Oliveira (#2);1;Toyota;Corolla;2024;web-abc123");
+        String linha = registro.montarLinha(CRIADO);
 
         assertEquals("27/10/2026 14:05:30 | CARRO_CRIADO | Maria Oliveira (#2) | carro #1 Toyota Corolla 2024 | req=web-abc123",
                 linha);
     }
 
     @Test
-    void mensagemSimplesTambemEhSalva() {
+    void campoQueOModuloNaoConheceEhIgnorado() {
+        RegistroOperacao registro = new RegistroOperacao(pasta.resolve("operacoes.log"));
+
+        String linha = registro.montarLinha(CRIADO.replace("\"ano\":2024", "\"ano\":2024,\"cor\":\"prata\""));
+
+        assertTrue(linha.contains("carro #1 Toyota Corolla 2024"));
+    }
+
+    @Test
+    void mensagemQueNaoEhJsonTambemEhSalva() {
         RegistroOperacao registro = new RegistroOperacao(pasta.resolve("operacoes.log"));
 
         String linha = registro.montarLinha("augusto");
@@ -42,8 +55,8 @@ class RegistroOperacaoTest {
         Path arquivo = pasta.resolve("operacoes.log");
         RegistroOperacao registro = new RegistroOperacao(arquivo);
 
-        registro.salvar("CARRO_CRIADO;2026-10-27T14:05:30;Maria Oliveira (#2);1;Toyota;Corolla;2024;req1");
-        registro.salvar("CARRO_EXCLUIDO;2026-10-27T14:06:00;Maria Oliveira (#2);1;Toyota;Corolla;2024;req2");
+        registro.salvar(CRIADO);
+        registro.salvar(CRIADO.replace("CARRO_CRIADO", "CARRO_EXCLUIDO"));
 
         List<String> linhas = Files.readAllLines(arquivo);
         assertEquals(2, linhas.size());

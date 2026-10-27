@@ -1,5 +1,11 @@
 package ifrn.edu.br;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +18,10 @@ import java.time.format.DateTimeFormatter;
 public class RegistroOperacao {
 
     private static final DateTimeFormatter FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            .addModule(new JavaTimeModule())
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     private final Path arquivo;
 
@@ -31,18 +41,19 @@ public class RegistroOperacao {
     }
 
     String montarLinha(String mensagem) {
-        String[] partes = mensagem.split(";");
-
-        if (partes.length < 8) {
+        OperacaoCarroDTO operacao;
+        try {
+            operacao = JSON.readValue(mensagem, OperacaoCarroDTO.class);
+        } catch (JsonProcessingException e) {
             return LocalDateTime.now().format(FORMATO) + " | MENSAGEM | " + mensagem;
         }
 
-        String operacao = partes[0];
-        String quando = LocalDateTime.parse(partes[1]).format(FORMATO);
-        String usuario = partes[2];
-        String carro = "carro #" + partes[3] + " " + partes[4] + " " + partes[5] + " " + partes[6];
-        String requestId = partes[7];
+        LocalDateTime quando = operacao.dataHora() == null ? LocalDateTime.now() : operacao.dataHora();
+        String usuario = operacao.usuarioNome() + " (#" + operacao.usuarioId() + ")";
+        String carro = "carro #" + operacao.carroId() + " " + operacao.marca() + " " + operacao.modelo() + " "
+                + operacao.ano();
 
-        return quando + " | " + operacao + " | " + usuario + " | " + carro + " | req=" + requestId;
+        return quando.format(FORMATO) + " | " + operacao.operacao() + " | " + usuario + " | " + carro + " | req="
+                + operacao.requestId();
     }
 }
