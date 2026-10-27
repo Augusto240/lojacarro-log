@@ -1,19 +1,16 @@
-# LojaCarro - Modulo de Log
+# lojacarro-log
 
-Modulo que recebe pelo RabbitMQ as operacoes feitas com os carros na LojaCarro e salva cada uma num arquivo.
+Modulo de log da LojaCarro. Ele fica escutando a fila `augusto` no RabbitMQ e salva num arquivo cada operacao feita
+com os carros.
 
 Autor: Jose Augusto
 
-Foi feito em cima dos codigos `Enviar.java` e `Receber.java` passados em aula. A fila e a exchange se chamam
-`augusto`.
+Fiz em cima do `Enviar.java` e do `Receber.java` que o professor passou. Troquei a fila `preco` por `augusto` e
+mudei o `Receber` para salvar a operacao em vez de responder a mensagem.
 
-## Como funciona
+## Mensagem
 
-```
-LojaCarro  --(mensagem)-->  RabbitMQ (fila augusto)  --(mensagem)-->  Receber  -->  operacoes.log
-```
-
-Toda vez que um carro e cadastrado, atualizado ou excluido, a LojaCarro manda um DTO (`OperacaoCarroDTO`) em JSON:
+A LojaCarro manda um `OperacaoCarroDTO` em JSON, por exemplo:
 
 ```json
 {
@@ -29,36 +26,33 @@ Toda vez que um carro e cadastrado, atualizado ou excluido, a LojaCarro manda um
 }
 ```
 
-O `Receber` le a mensagem, o `RegistroOperacao` transforma o JSON de volta no `OperacaoCarroDTO` (com o Jackson) e
-salva uma linha no `operacoes.log`:
+O `RegistroOperacao` transforma o JSON de volta no DTO (com o Jackson) e escreve uma linha no `operacoes.log`:
 
 ```
 27/10/2026 14:05:30 | CARRO_CRIADO | Maria Oliveira (#2) | carro #1 Toyota Corolla 2024 | req=web-abc123
 ```
 
-Mensagem que nao for JSON (como a de teste do `Enviar`) e salva do jeito que chegou.
+Se chegar alguma coisa que nao e JSON ela e salva do jeito que veio. E se o modulo estiver desligado as mensagens
+ficam esperando na fila e sao lidas quando ele voltar.
 
-Se o modulo estiver desligado, as mensagens ficam guardadas na fila e sao processadas quando ele voltar.
+## Rodando
 
-## Como rodar
-
-```bash
+```
 ./mvnw clean package
 java -jar target/lojacarro-log.jar
 ```
 
-Por padrao conecta no RabbitMQ em `10.209.1.53` (usuario `admin`, senha `admin`), que so funciona na rede cabeada
-do laboratorio. Para usar outro endereco:
+Por padrao ele conecta no RabbitMQ do laboratorio (10.209.1.53, admin / admin), que so funciona na rede cabeada.
+Fora de la da pra apontar para outro:
 
-```bash
+```
 RABBITMQ_HOST=localhost java -jar target/lojacarro-log.jar
 ```
 
-O arquivo e salvo em `operacoes.log` na pasta onde o programa rodou. Da pra trocar com a variavel
-`ARQUIVO_OPERACOES`.
+O arquivo `operacoes.log` e criado na pasta onde o programa rodou (ou onde a variavel `ARQUIVO_OPERACOES` mandar).
 
-Para mandar uma mensagem de teste (manda `augusto` para a fila `augusto`):
+Para mandar uma mensagem de teste para a fila:
 
-```bash
+```
 java -cp target/lojacarro-log.jar ifrn.edu.br.Enviar
 ```
